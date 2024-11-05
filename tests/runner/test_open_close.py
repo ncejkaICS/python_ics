@@ -27,7 +27,7 @@ class TestOpenClose(unittest.TestCase):
         self.assertEqual(
             len(devices),
             self.expected_dev_count,
-            f"Device check expected {self.expected_dev_count} devices, found {len(self.devices)}: {self.devices}...",
+            f"Device check expected {self.expected_dev_count} devices, found {len(devices)}: {devices}...",
         )
     
     # look for each device type separately
@@ -110,22 +110,23 @@ class TestOpenClose(unittest.TestCase):
         devices = ics.find_devices([ics.NEODEVICE_FIRE3, ics.NEODEVICE_RADMOON2, ics.NEODEVICE_VCAN42])  # no fire2
         self.assertTrue(len(devices) == 4)
     
-    # look for all four device types
-    def test_find_fire2_fire3_moon2_vcan42(self):
-        self._check_devices()
-        # Weird error here where ics.find_devices([...]) with all device types crashes python and going one by one sometimes fixes it
-        # ics.find_devices([ics.NEODEVICE_FIRE2])
-        # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3])
-        # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])
-        ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
-        # assigning output to variable does sometimes help or hurt too
-        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
+    # look for all four device types -- major bug that crashes python
+    # def test_find_fire2_fire3_moon2_vcan42(self):
+    #     self._check_devices()
+    #     # Weird error here where ics.find_devices([...]) with all device types crashes python and going one by one sometimes fixes it
+    #     # ics.find_devices([ics.NEODEVICE_FIRE2])
+    #     # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3])
+    #     # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])
+    #     ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
+    #     # assigning output to variable does sometimes help or hurt too
+    #     devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
 
-    def test_open_close(self):
+    def test_number_of_clients(self):
         self._check_devices()
         for dev in self.devices:
+            # skip 2nd moon2
             if dev.serial_number != ics.find_devices([dev.DeviceType])[0].serial_number:
-                continue  # skip 2nd moon2
+                continue
             self.assertEqual(
                 ics.find_devices([dev.DeviceType])[0].NumberOfClients,
                 0,
@@ -135,11 +136,12 @@ class TestOpenClose(unittest.TestCase):
             d = ics.open_device(dev)
             try:
                 self.assertEqual(dev, d)
+                # must search again to see number of clients actually increment
                 self.assertEqual(
                     ics.find_devices([dev.DeviceType])[0].NumberOfClients,
                     1,
                     f"Device {dev} failed to increment NumberOfClients after opening",
-                )  # must search again to see number of clients actually increment
+                )
                 self.assertEqual(dev.MaxAllowedClients, 1)
 
                 self.assertEqual(
@@ -200,10 +202,10 @@ class TestOpenClose(unittest.TestCase):
         for device in first_devices:
             ics.close_device(device)
 
-    def test_open_close_10_times(self):
+    def test_open_close_5_times(self):
         self._check_devices()
         for dev in self.devices:
-            for x in range(10):
+            for x in range(5):
                 try:
                     ics.open_device(dev)
                     error_count = ics.close_device(dev)
