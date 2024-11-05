@@ -29,15 +29,19 @@ class TestOpenClose(unittest.TestCase):
             self.expected_dev_count,
             f"Device check expected {self.expected_dev_count} devices, found {len(self.devices)}: {self.devices}...",
         )
-
-    def test_find_device_filters(self):
-        # Weird error here where ics.find_devices([...]) with all device types crashes python and going one by one sometimes fixes it
-        ics.find_devices([ics.NEODEVICE_FIRE2])
-        ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3])
-        ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])
-        ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
-        # assigning output to variable does help or hurt too
-        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
+    
+    # look for each device type separately
+    def test_find_fire2(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2])
+        self.assertTrue(len(devices) == 1)
+        self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_FIRE2)
+    
+    def test_find_fire3(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE3])
+        self.assertTrue(len(devices) == 1)
+        self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_FIRE3)
     
     def test_find_moon2s(self):
         self._check_devices()
@@ -46,33 +50,76 @@ class TestOpenClose(unittest.TestCase):
         self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_RADMOON2)
         self.assertEqual(devices[1].DeviceType, ics.NEODEVICE_RADMOON2)
 
-    def test_find_fire3(self):
-        self._check_devices()
-        devices = ics.find_devices([ics.NEODEVICE_FIRE3])
-        self.assertTrue(len(devices) == 1)
-        self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_FIRE3)
-
-    def test_find_fire2(self):
-        self._check_devices()
-        devices = ics.find_devices([ics.NEODEVICE_FIRE2])
-        self.assertTrue(len(devices) == 1)
-        self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_FIRE2)
-
     def test_find_vcan42(self):
         self._check_devices()
         devices = ics.find_devices([ics.NEODEVICE_VCAN42])
         self.assertTrue(len(devices) == 1)
         self.assertEqual(devices[0].DeviceType, ics.NEODEVICE_VCAN42)
 
-    def test_find_fire2_and_vcan42(self):
+    # look for fire2 and one other device type
+    def test_find_fire2_fire3(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3])
+        self.assertTrue(len(devices) == 2)
+    
+    def test_find_fire2_vcan42(self):
         self._check_devices()
         devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_VCAN42])
         self.assertTrue(len(devices) == 2)
 
-    def test_find_fire3_and_moon2(self):
+    def test_find_fire2_moon2(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_RADMOON2])
+        self.assertTrue(len(devices) == 3)
+
+    # look for fire3 and one other device type
+    def test_find_fire3_moon2(self):
         self._check_devices()
         devices = ics.find_devices([ics.NEODEVICE_FIRE3, ics.NEODEVICE_RADMOON2])
         self.assertTrue(len(devices) == 3)
+    
+    def test_find_fire3_vcan42(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])
+        self.assertTrue(len(devices) == 2)
+    
+    # look for moon2 and vcan42
+    def test_find_moon2_vcan42(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_RADMOON2, ics.NEODEVICE_VCAN42])
+        self.assertTrue(len(devices) == 3)
+    
+    # look for three device types
+    def test_find_fire2_fire3_moon2(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_RADMOON2])  # no vcan42
+        self.assertTrue(len(devices) == 4)
+    
+    def test_find_fire2_fire3_vcan42(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])  # no moon2
+        self.assertTrue(len(devices) == 3)
+    
+    def test_find_fire2_moon2_vcan42(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_RADMOON2, ics.NEODEVICE_VCAN42])  # no fire3
+        self.assertTrue(len(devices) == 4)
+    
+    def test_find_fire3_moon2_vcan42(self):
+        self._check_devices()
+        devices = ics.find_devices([ics.NEODEVICE_FIRE3, ics.NEODEVICE_RADMOON2, ics.NEODEVICE_VCAN42])  # no fire2
+        self.assertTrue(len(devices) == 4)
+    
+    # look for all four device types
+    def test_find_fire2_fire3_moon2_vcan42(self):
+        self._check_devices()
+        # Weird error here where ics.find_devices([...]) with all device types crashes python and going one by one sometimes fixes it
+        # ics.find_devices([ics.NEODEVICE_FIRE2])
+        # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3])
+        # ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42])
+        ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
+        # assigning output to variable does sometimes help or hurt too
+        devices = ics.find_devices([ics.NEODEVICE_FIRE2, ics.NEODEVICE_FIRE3, ics.NEODEVICE_VCAN42, ics.NEODEVICE_RADMOON2])
 
     def test_open_close(self):
         self._check_devices()
@@ -184,25 +231,11 @@ class TestOpenClose(unittest.TestCase):
 
     def test_auto_close(self):
         self._check_devices()
-        devices = ics.find_devices(
-            [
-                ics.NEODEVICE_FIRE2,
-                ics.NEODEVICE_FIRE3,
-                ics.NEODEVICE_VCAN42,
-                ics.NEODEVICE_RADMOON2,
-            ]
-        )
+        devices = ics.find_devices()
         for dev in devices:
             ics.open_device(dev)
         del devices
-        devices = ics.find_devices(
-            [
-                ics.NEODEVICE_FIRE2,
-                ics.NEODEVICE_FIRE3,
-                ics.NEODEVICE_VCAN42,
-                ics.NEODEVICE_RADMOON2,
-            ]
-        )
+        devices = ics.find_devices()
         for dev in devices:
             ics.open_device(dev)
             ics.close_device(dev)
