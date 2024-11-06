@@ -5,11 +5,13 @@ import ics
 
 unittest.TestLoader.sortTestMethodsUsing = None
 
+HARDWARE_DELAY = 0.2  # delay between hardware operations
+LIN_TX_COUNT = 1  # number of lin msgs to send
 
 class BaseTests:
     """Base classes. These are isolated and won't be run/discovered. Used for inheritance"""
 
-    class TestCAN(unittest.TestCase):
+    class TestLIN(unittest.TestCase):
         @classmethod
         def setUpClass(cls):
             cls.netid = None
@@ -22,6 +24,7 @@ class BaseTests:
             for device in self.devices:
                 ics.open_device(device)
                 ics.load_default_settings(device)
+                time.sleep(HARDWARE_DELAY)
 
         @classmethod
         def tearDown(self):
@@ -33,23 +36,25 @@ class BaseTests:
             for device in self.devices:
                 # Clear any messages in the buffer
                 _, _ = ics.get_messages(device, False, 1)
-                _ = ics.get_error_messages(
-                    device
-                )  # Documentation is wrong -- says it can take 3 args but only takes 1
+                _ = ics.get_error_messages(device)  # Documentation is wrong -- says it can take 3 args but only takes 1
                 # may need more clearing of errors here
 
         def _tx_rx_lin_devices(self, master_dev, slave_dev):
             self._prepare_devices()
 
+            # master msg with no data
             master_msg = ics.SpyMessageJ1850()
             master_msg.Header = (0xC1,)
-            master_msg.NetworkID = ics.NETID_LIN
+            master_msg.NetworkID = self.netid
+            master_msg.NetworkID2 = self.netid >> 8
             master_msg.Data = ()
             master_msg.StatusBitField = ics.SPY_STATUS_LIN_MASTER
 
+            # slave msg with data
             slave_msg = ics.SpyMessageJ1850()
             slave_msg.Header = (0xC1,)
             slave_msg.NetworkID = self.netid
+            slave_msg.NetworkID2 = self.netid >> 8
             slave_msg.Data = tuple([x for x in range(8)])
             slave_msg.Protocol = ics.SPY_PROTOCOL_LIN
             checksum = 0
@@ -60,23 +65,44 @@ class BaseTests:
             slave_msg.Data += ((~checksum & 0xFF),)
 
             # transmit slave msg first
-            ics.transmit_messages(slave_dev, slave_msg)
-            time.sleep(0.5)
+            for _ in range(LIN_TX_COUNT):
+                ics.transmit_messages(slave_dev, slave_msg)
+                time.sleep(HARDWARE_DELAY)
 
             # transmit master msg
-            ics.transmit_messages(master_dev, master_msg)
-            time.sleep(0.5)
+            for _ in range(LIN_TX_COUNT):
+                ics.transmit_messages(master_dev, master_msg)
+                time.sleep(HARDWARE_DELAY)
 
-            # find msg
+            # find slave msg
             rx_msgs, errors = ics.get_messages(slave_dev, False, 1)
             self.assertFalse(errors)
-            # Should only see 1 msg but sometimes we get 2
-            self.assertTrue(len(rx_msgs) == 1 or len(rx_msgs) == 2)
-            for msg in rx_msgs:
-                if msg.NetworkID == master_msg.NetworkID:
-                    if msg.ArbIDOrHeader == master_msg.Header:
-                        if msg.Data == master_msg.Data:
+            self.assertTrue(len(rx_msgs) > 0, "Didnt find any lin messages")
+            msg_found = False
+            error_msg = ""
+            tx_msg_netid = (slave_msg.NetworkID2 << 8) | slave_msg.NetworkID
+            for rx_msg in rx_msgs:
+                rx_msg_netid = (rx_msg.NetworkID2 << 8) | rx_msg.NetworkID
+                # check netid
+                if rx_msg_netid == tx_msg_netid:
+                    if rx_msg.ArbIDOrHeader != 0:
+                        rx_msg_header = int(hex(rx_msg.ArbIDOrHeader)[-2:], 16)
+                    else:
+                        error_msg = "Found msg header was 0"
+                    # check header
+                    if rx_msg_header == slave_msg.Header[0]:
+                        # check data
+                        if rx_msg.Data == slave_msg.Data[2:]:
+                            msg_found = True
                             break
+                        else:
+                            error_msg = f"Data doesnt match: {rx_msg.Data} and {slave_msg.Data[2:]}"
+                    else:
+                        error_msg = f"Headers dont match: {rx_msg_header} and {slave_msg.Header[0]}"
+                else:
+                    error_msg = f"Netids dont match: {rx_msg_netid} and {tx_msg_netid}"
+            
+            self.assertTrue(msg_found, f"Failed to find matching slave message: {error_msg}")
 
             for device in self.devices:
                 self.assertFalse(ics.get_error_messages(device))
@@ -88,25 +114,25 @@ class BaseTests:
             self._tx_rx_lin_devices(self.fire3, self.fire2)
 
 
-class TestLIN1(BaseTests.TestCAN):
+class TestLIN1(BaseTests.TestLIN):
     @classmethod
     def setUpClass(cls):
         cls.netid = ics.NETID_LIN
 
 
-class TestLIN2(BaseTests.TestCAN):
+class TestLIN2(BaseTests.TestLIN):
     @classmethod
     def setUpClass(cls):
         cls.netid = ics.NETID_LIN2
 
 
-class TestLIN3(BaseTests.TestCAN):
+class TestLIN3(BaseTests.TestLIN):
     @classmethod
     def setUpClass(cls):
         cls.netid = ics.NETID_LIN3
 
 
-class TestLIN4(BaseTests.TestCAN):
+class TestLIN4(BaseTests.TestLIN):
     @classmethod
     def setUpClass(cls):
         cls.netid = ics.NETID_LIN4
