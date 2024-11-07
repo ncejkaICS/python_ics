@@ -171,7 +171,7 @@ class TestHSCAN2(BaseTests.TestCAN):
 class TestHSCAN3(BaseTests.TestCAN):
     @classmethod
     def setUpClass(cls):
-        cls.netid = ics.NETID_HSCAN2
+        cls.netid = ics.NETID_HSCAN3
 
 class TestMSCAN(BaseTests.TestCAN):
     @classmethod

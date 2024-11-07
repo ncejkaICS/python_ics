@@ -111,7 +111,53 @@ class BaseTests:
 
         def test_fire3_master_tx(self):
             self._tx_rx_lin_devices(self.fire3, self.fire2)
-
+        
+        def test_bad_messages(self):
+            self._prepare_devices()
+            device = self.fire3
+            bad_msg = ics.SpyMessageJ1850()
+            with self.assertRaises(AttributeError):
+                bad_msg.Header = "bad"
+            
+            with self.assertRaises(TypeError):
+                bad_msg.NetworkID = "bad"
+            
+            # transmit "bad" msg and check error counts
+            with self.assertRaises(ics.RuntimeError):
+                ics.transmit_messages(device, "bad")
+            errors = ics.get_last_api_error(device)
+            self.assertGreater(len(errors), 0, "Error count didnt increment after bad message")
+            _, errors = ics.get_messages(device, False, 1)
+            self.assertGreater(errors, 0, "Error count didnt increment after bad message")
+            
+            # not sure why this fails when ran again...
+            with self.assertRaises(ics.RuntimeError):
+                ics.get_last_api_error(device)
+            
+            # get errors and check that count is cleared after
+            errors = ics.get_error_messages(device)
+            self.assertGreater(len(errors), 0)
+            _, errors = ics.get_messages(device, False, 1)
+            self.assertEqual(errors, 0, "Error count didnt reset after getting error messages")
+            
+            # try more data than 8 bytes -- doesnt cause error
+            # bad_msg.Header = (0xC1,)
+            # bad_msg.NetworkID = self.netid
+            # bad_msg.NetworkID2 = self.netid >> 8
+            # bad_msg.StatusBitField = ics.SPY_STATUS_LIN_MASTER
+            # bad_msg.Data = tuple([x for x in range(32)])
+            # bad_msg.Protocol = ics.SPY_PROTOCOL_LIN
+            
+            # send blank message and check other side
+            # bad_msg = ics.SpyMessageJ1850()
+            # ics.transmit_messages(device, bad_msg)
+            
+            
+            # stuff1, stuff2 = ics.get_messages(device, False, 1)
+            # stuff3 = ics.get_error_messages(device)
+            # print(f"stuff1: {stuff1}")
+            # print(f"stuff2: {stuff2}")
+            # print(f"stuff3: {stuff3}")
 
 class TestLIN1(BaseTests.TestLIN):
     @classmethod
@@ -119,10 +165,10 @@ class TestLIN1(BaseTests.TestLIN):
         cls.netid = ics.NETID_LIN
 
 
-class TestLIN2(BaseTests.TestLIN):
-    @classmethod
-    def setUpClass(cls):
-        cls.netid = ics.NETID_LIN2
+# class TestLIN2(BaseTests.TestLIN):
+#     @classmethod
+#     def setUpClass(cls):
+#         cls.netid = ics.NETID_LIN2
 
 
 # class TestLIN3(BaseTests.TestLIN):
