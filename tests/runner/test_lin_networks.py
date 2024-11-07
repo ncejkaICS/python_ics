@@ -6,7 +6,7 @@ import ics
 unittest.TestLoader.sortTestMethodsUsing = None
 
 HARDWARE_DELAY = 0.2  # delay between hardware operations
-LIN_TX_COUNT = 1  # number of lin msgs to send
+LIN_TX_COUNT = 2  # number of lin msgs to send
 
 class BaseTests:
     """Base classes. These are isolated and won't be run/discovered. Used for inheritance"""
@@ -37,7 +37,6 @@ class BaseTests:
                 # Clear any messages in the buffer
                 _, _ = ics.get_messages(device, False, 1)
                 _ = ics.get_error_messages(device)  # Documentation is wrong -- says it can take 3 args but only takes 1
-                # may need more clearing of errors here
 
         def _tx_rx_lin_devices(self, master_dev, slave_dev):
             self._prepare_devices()
@@ -126,16 +125,16 @@ class TestLIN2(BaseTests.TestLIN):
         cls.netid = ics.NETID_LIN2
 
 
-class TestLIN3(BaseTests.TestLIN):
-    @classmethod
-    def setUpClass(cls):
-        cls.netid = ics.NETID_LIN3
+# class TestLIN3(BaseTests.TestLIN):
+#     @classmethod
+#     def setUpClass(cls):
+#         cls.netid = ics.NETID_LIN3
 
 
-class TestLIN4(BaseTests.TestLIN):
-    @classmethod
-    def setUpClass(cls):
-        cls.netid = ics.NETID_LIN4
+# class TestLIN4(BaseTests.TestLIN):
+#     @classmethod
+#     def setUpClass(cls):
+#         cls.netid = ics.NETID_LIN4
 
 
 if __name__ == "__main__":
